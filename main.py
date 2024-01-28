@@ -41,11 +41,6 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Cell Simulation")
 
 # Define colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GREEN = (0, 100, 0)  # Color for the food
-GREENER = (0, 255, 0)  # Color for the food in range
-BLUE = (0, 0, 255)  # Color for the vision range
 
 # Cell representation
 cell = pygame.Rect(400, 300, 20, 20) # A simple square cell
