@@ -28,9 +28,10 @@ class ambient:
 
         self.screen = pygame.display.set_mode((self.width, self.height))
         self.clock = pygame.time.Clock()
+        self.tickrate= 5
         pygame.display.set_caption("Cell Simulation")
 
-        self.cell = pygame.Rect(400, 300, 20, 20) 
+        self.cell = pygame.Rect(self.width/2-10, self.height/2-10, 20, 20) 
         self.cell_speed = 20
         self.cell_vision_radius=200
 
@@ -40,7 +41,7 @@ class ambient:
         self.state = self.calculate_state()
 
         if(self.test_mode):
-            self.clock.tick(60)
+            self.clock.tick(self.tickrate)
             self.draw_env()
 
     def draw_env(self):
@@ -58,7 +59,8 @@ class ambient:
             # Update the display
             pygame.display.flip()
 
-              # Limit the game to 60 frames per second
+            # Limit the game to 60 frames per second
+            self.clock.tick(self.tickrate)
 
     # Food representation
     def spawn_food(self):
@@ -69,14 +71,6 @@ class ambient:
     
     def draw_food(self):
         pygame.draw.rect(self.screen, GREEN, self.food)
-
-    def isDone(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.quit = True
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.quit = True
 
     def verifyState (self):
         if(self.steps>=self.total_movements or self.eated_food>=self.total_food):
@@ -94,11 +88,11 @@ class ambient:
             self.cell.x += self.speed
 
         # Ensure the self.cell stays within the window bounds
-        self.cell.x = max(0, min(self.cell.x, self.width - self.width))
-        self.cell.y = max(0, min(self.cell.y, self.height - self.height))
+        self.cell.x = max(0, min(self.cell.x, self.width - 20))
+        self.cell.y = max(0, min(self.cell.y, self.height - 20))
 
-        self.steps =+ 1
-        self.points =-1
+        self.steps += 1
+        self.points += -1
 
         new_state = self.calculate_state()
 
@@ -107,12 +101,12 @@ class ambient:
         if self.cell.colliderect(self.food):
             self.eated_food += 1
             self.food = self.spawn_food()  # Respawn food at a new location
-            bonus = 50
-        else:
-            bonus = 0
-
+            self.points +=10
+            # bonus = 10
+        # else:
+            # bonus = 0
         self.draw_env()
-        return self.calculate_reward(bonus)
+        return self.calculate_reward()
     
     def calculate_state(self):
         cell_center = (self.cell.x + self.cell.width / 2, self.cell.y + self.cell.height / 2)
@@ -141,7 +135,7 @@ class ambient:
             reward += 1  # Moving closer to food
         else:
             reward += -1  # Moving away from food
-
+        print(reward)
         return reward
     
     def reset(self):
@@ -152,7 +146,7 @@ class ambient:
         self.done = False
         self.spawn_food()
 
-    def quit(self):
+    def end(self):
         self.quit = True
         pygame.quit()
 
