@@ -3,11 +3,11 @@ import agent
 from screen import screen, screen_width, screen_height 
 import scenery as sc
 
-testing = False
-num_episodes = 500
-map = e.Ambiente(screen, testing, num_episodes)
+training = False
+num_episodes = 50
+map = e.Ambiente(screen, training, num_episodes)
 
-agente = agent.Agente((100,100),map.screen, 25, 5)
+agente = agent.Agente(training,map.screen, 25, 5)
 food = sc.Food((50,50),map.screen, 50)
 
 map.add_food_item(food)

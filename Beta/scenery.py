@@ -49,14 +49,16 @@ class Food:
         distancia = (dx**2 + dy**2) ** 0.5
         return distancia < self.radius
 
-    def verifyColision(self, agente, scenarios, ambient):
+    def verifyAgentColision(self, agente):
         dx = self.x - agente.x
         dy = self.y - agente.y
         distancia = (dx**2 + dy**2) ** 0.5
-        if distancia < (self.radius + agente.radius):
-            self.find_food_place(scenarios)
-            ambient.eated_food += 1
+        return distancia < (self.radius + agente.radius)
     
+    def respawnFood(self, ambient):
+        self.find_food_place(ambient.scenarios)
+        ambient.eated_food += 1
+
     def find_food_place(self,scenarios):
         free_segments = []
         for x in range(segment_hor):

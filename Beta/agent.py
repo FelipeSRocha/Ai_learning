@@ -13,16 +13,16 @@ from keras.optimizers import Adam
 from keras.models import load_model
 from collections import deque
 
-testing = True
 model_path = "Beta\path_to_save_model.h5"
 state_size = 64  # Define the size of your state
 action_size = 4  # Assuming 4 possible actions: up, down, left, right
 batch_size = 128  # Training batch size
 
 class Agente:
-    def __init__(self, position, screen, agent_speed, radius):
-        self.x = position[0]
-        self.y = position[1]
+    def __init__(self, training, screen, agent_speed, radius):
+        # x = random.randint(10, sc.screen_width-10)
+        self.x = random.randint(10, (sc.screen_width-10)/10)*10
+        self.y = random.randint(10, (sc.screen_height-10)/10)*10
         self.radius = radius
         self.speed = agent_speed
         self.screen = screen
@@ -37,7 +37,7 @@ class Agente:
         self.nextReward = 0
         self.lastState = []
         self.nextState = []
-        self.dqn_agent = dqn_agent(state_size, action_size, batch_size, testing)
+        self.dqn_agent = dqn_agent(state_size, action_size, batch_size, training)
 
         
 
@@ -50,8 +50,8 @@ class Agente:
         for sc.screen, ray_color , (self.x, self.y), (end_x, end_y) in self.vision_rays:
             pygame.draw.line(sc.screen, ray_color , (self.x, self.y), (end_x, end_y))
 
-    def verifyColision(self, objects):
-        for obj in objects:
+    def verifyColision(self, scenarios):
+        for obj in scenarios:
             if self.colision_calculate(obj):
                 return True 
             elif self.x > sc.screen_width or self.x < 0:
@@ -70,14 +70,14 @@ class Agente:
             return distancia < self.radius
         return False
     
-    def act(self, objects, foods, episode, ambient):    
+    def act(self, episode, ambient):    
         if(len(self.lastState) <1):
-            self.lastState = self.calculateNewState(objects, foods)   
+            self.lastState = self.calculateNewState(ambient.scenarios, ambient.foods)   
 
-        action = self.move(objects, episode)
+        action = self.move(ambient.scenarios, episode)
         ambient.steps += 1
-        self.nextState = self.calculateNewState(objects, foods)
-        self.calculateReward()
+        self.nextState = self.calculateNewState(ambient.scenarios, ambient.foods)
+        self.calculateReward(ambient)
         self.dqn_agent.memorize(self.nextState, action, self.nextReward, self.lastState, ambient.done)
         self.resetStates()
 
@@ -90,7 +90,7 @@ class Agente:
         # if keys[pygame.K_DOWN]:
         #     self.y += self.speed
 
-    def move(self, objects, episode):
+    def move(self, scenarios, episode):
         original_x = self.x
         original_y = self.y
         action = self.dqn_agent.act(self.lastState, episode)
@@ -104,19 +104,19 @@ class Agente:
         elif action == 3:  # Right
             self.x += self.speed
 
-        if self.verifyColision(objects):
+        if self.verifyColision(scenarios):
             self.x=original_x
             self.y=original_y
         return action
 
-    def calculateNewState(self, objects, foods):
+    def calculateNewState(self, scenarios, foods):
         self.vision_rays =[]
         angle_gap = 360 / self.num_rays
         self.nextdistanceToFood = 0
         state = []
         for i in range(self.num_rays):
             angle = math.radians(i * angle_gap)
-            end_x, end_y, ray_color, seeFood, distance, objectSaw = self.cast_ray( angle, objects, foods)
+            end_x, end_y, ray_color, seeFood, distance, objectSaw = self.cast_ray( angle, scenarios, foods)
 
             ## Save the distance to food as a self state
             nextdistanceToFood = (self.visionRange-distance)/self.visionRange
@@ -127,11 +127,15 @@ class Agente:
             self.vision_rays.append([sc.screen, ray_color , (self.x, self.y), (end_x, end_y)])
         return state
 
-    def calculateReward(self):
+    def calculateReward(self, ambient):
         if self.lastdistanceToFood < self.nextdistanceToFood:
             self.nextReward = 1
         else:
-            self.nextReward = 0
+            self.nextReward = -1
+        for food in ambient.foods:
+            if food.verifyAgentColision(self):
+                food.respawnFood(ambient)
+                self.nextReward +=50
 
 
     def resetStates(self):
@@ -142,7 +146,7 @@ class Agente:
         self.lastState = self.nextState
         # self.nextState = []
         pass
-    def cast_ray(self, angle, objects, foods):
+    def cast_ray(self, angle, scenarios, foods):
         sin_angle, cos_angle = math.sin(angle), math.cos(angle)
         distance = 0
         hit = False
@@ -153,7 +157,7 @@ class Agente:
             distance += 1
             check_x, check_y = self.x + cos_angle * distance, self.y + sin_angle * distance
             
-            for obj in objects:
+            for obj in scenarios:
                 if obj.rect.collidepoint((check_x, check_y)):
                     hit = True
                     objectSaw = -1
@@ -214,14 +218,14 @@ class Agente:
         return proximo_x, proximo_y, t >= 0 and t <= 1
 
 class dqn_agent:
-    def __init__(self, state_size, action_size, batch_size, testing):
+    def __init__(self, state_size, action_size, batch_size, training):
         self.model_path = "Beta/path_to_save_model.h5"
-        self.testing = testing
+        self.training = training
         self.state_size = state_size
         self.action_size = action_size
         self.memory = deque(maxlen=2000)
         self.batch_size = batch_size
-        self.epsilon = 1  # Exploration rate
+        self.epsilon = 1 if training else 0 # Exploration rate
         self.epsilon_decay = 0.995
         self.epsilon_min = 0.01
         self.learning_rate = 0.0010
