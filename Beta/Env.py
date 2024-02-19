@@ -1,14 +1,26 @@
 import pygame
+import matplotlib.pyplot as plt
 
 clock = pygame.time.Clock()
 
 class Ambiente:
-    def __init__(self, screen):
+    def __init__(self, screen, testing, num_episodes):
         pygame.init()
         self.screen = screen
         self.scenarios = []
         self.foods = []
         self.agentes = []
+        self.done = False
+        self.quit = False
+        self.testing = testing
+        self.num_episodes = num_episodes
+        self.FPS = 10
+        self.total_movements = 1000
+        self.steps = 0
+        self.total_food = 3
+        self.eated_food = 0
+        self.points = 100
+        self.speed = 20
 
     def add_scenery_item(self, item):
         self.scenarios.append(item)
@@ -30,29 +42,72 @@ class Ambiente:
         for food in self.foods:
             food.draw()
 
-    def run(self):
-        running = True
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_ESCAPE]:
-                running = False
-
-            if len(keys):
-                for agente in self.agentes:
-                    agente.move(keys, self.scenarios)
-                
-            for food in self.foods:
-                food.verifyColision(agente,self.scenarios)
-
-            self.draw_ambient()
-
-            pygame.display.flip()
-            clock.tick(60)
+    def reset(self):
+        self.steps = 0
+        self.total_food = 3
+        self.eated_food = 0
+        # self.points = 100
+        self.done = False
+        # for food in self.foods:
+        #     food.find_food_place(self.scenarios)
+    
+    def end(self):
+        self.quit = True
         pygame.quit()
 
+    def verifyState (self):
+        # print(self.steps, self.eated_food, self.total_food)
+        if(self.eated_food>=self.total_food or self.steps > self.total_movements):
+            self.done = True
 
-        pass
+    def run(self):
+        for episode in range(self.num_episodes):
+            if self.quit:
+                break
+            self.reset()
+            while not self.done:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.quit()
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:
+                            self.quit()
+
+                # if len(keys):
+                for agente in self.agentes:
+                    agente.act(self.scenarios, self.foods, episode, self)
+                    
+                for food in self.foods:
+                    food.verifyColision(agente,self.scenarios, self)
+
+                self.verifyState()
+
+                if self.testing:
+                    pygame.display.flip()
+                    self.draw_ambient()
+                    clock.tick(self.FPS)
+
+            print(f"Episode: {episode}, Steps: {self.steps}, Food eated: {self.eated_food}, Epsilon: f{self.agentes[0].dqn_agent.epsilon}")
+
+            for agent in self.agentes:
+                if len(agent.dqn_agent.memory) > agent.dqn_agent.batch_size and not self.testing:
+                    agent.dqn_agent.replay(episode)
+
+        self.agentes[0].dqn_agent.save_model(f"Beta/path_to_save_model.h5")
+
+        self.end()
+        fig, ax1 = plt.subplots()
+
+        ax1.set_xlabel('Episodes')
+        ax1.set_ylabel('Loss', color='tab:blue')
+        ax1.plot(range(self.num_episodes), self.agentes[0].dqn_agent.history['loss'], color='tab:blue')
+        ax1.tick_params(axis='y', labelcolor='tab:blue')
+
+        # Instantiate a second y-axis sharing the same x-axis
+        ax2 = ax1.twinx()  
+        ax2.set_ylabel('Moves', color='tab:red')  
+        ax2.plot(range(self.num_episodes), self.agentes[0].dqn_agent.history['steps'], color='tab:red')
+        ax2.tick_params(axis='y', labelcolor='tab:red')
+
+        plt.show()
+

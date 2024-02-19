@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 testing = True
 env = env.ambient(testing)
 
-model_path = "path_to_save_model.h5"
+model_path = "Alpha\path_to_save_model.h5"
 state_size = 4  # Define the size of your state
 action_size = 4  # Assuming 4 possible actions: up, down, left, right
 num_episodes = 100

@@ -43,12 +43,19 @@ class Food:
         # self.rect.x = nova_posicao_x
         # self.rect.y = nova_posicao_y
 
-    def verifyColision(self, agente, scenarios):
+    def verifyIfInside(self, x, y ):
+        dx = self.x - x
+        dy = self.y - y
+        distancia = (dx**2 + dy**2) ** 0.5
+        return distancia < self.radius
+
+    def verifyColision(self, agente, scenarios, ambient):
         dx = self.x - agente.x
         dy = self.y - agente.y
         distancia = (dx**2 + dy**2) ** 0.5
         if distancia < (self.radius + agente.radius):
             self.find_food_place(scenarios)
+            ambient.eated_food += 1
     
     def find_food_place(self,scenarios):
         free_segments = []
